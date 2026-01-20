@@ -56,7 +56,15 @@ git branch -M main
 git push -u origin main
 ```
 
+由于我们
 
+### 附: 当错误提交之后的补救措施
+
+当身处一个错误的分支，例如需要在 branch:feat-rss 开发，并且完成后通过 add 和 commit 进行暂存(add)和提交(commit)。但是有时会一不小心 add 甚至 commit 到预期以外的线（例如个人开发中的 main 线或者团队的 dev 线（如果有足够权限））。此时就需要下面这些方式来救场。首先通过`git status`来确认状态，通过`git branch`检查目前本地有几条线。切换过去之后，通过`git log --oneline --decorate --max-count=10`来查看这条线上的提交内容。
+
+1. 当仅仅只是在错误的 branch 上进行 add 操作，那么只需要`git switch <BRANCH NAME>`就行了。或者`git checkout <BRANCH NAME>`（git checkout -b 是新建）。
+
+2. 当已经完成一次 commit，那么首先通过`git reset --soft HEAD^`进行一步撤销（回到本次 commit 所创建的 head 指针所指向的前一个结点），其中`--soft`表示将更改放回暂存区，`HEAD^`就是上一个版本的指针。执行后，情况回到了 1. 所示。
 
 ## epoch2: 最小跑通 DAO
 
