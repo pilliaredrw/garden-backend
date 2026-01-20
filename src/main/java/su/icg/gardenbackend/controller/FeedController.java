@@ -8,7 +8,7 @@ import su.icg.gardenbackend.service.FeedService;
 
 import java.util.List;
 
-@RestController // 注解表明是 Restapi 的 Controller 入口。负责处理 HTTP 请求，返回 JSON。
+@RestController // 注解表明是 Restapi 的 Controller 入口。
 public class FeedController
 {
 

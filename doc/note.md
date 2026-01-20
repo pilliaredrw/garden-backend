@@ -1,6 +1,6 @@
 ## 创建项目
 
-现在以一个个人博客、Memos 以及别的什么能想到的东西的汇聚端来练习 Springboot，并且借此机会 Java 复健。项目刘长春大概是从 RSS，Memos api 等方式得到数据，将数据同步之后塞入数据库练习 mybatis（或者 mybatis-plus）。
+现在以一个个人博客、Memos 以及别的什么能想到的东西的汇聚端来练习 Springboot，并且借此机会 Java 复健，练习一下 git 多人运动。项目刘长春大概是从 RSS，Memos api 等方式得到数据，将数据同步之后塞入数据库练习 mybatis（或者 mybatis-plus）。
 
 首先创建项目，git 直接初始化四连 git 提交。进行`git init`, `git add .`, `git commit -m "init"`, 之后进行`git checkout -b feat/rss-fetch`进入支线开发。 
 
@@ -48,15 +48,18 @@
 
 ## 完成工作推送 git(以 github 为例)
 
-将本地的 main 主线推送到远端的 main 主线。
+将本地的 main（或 master） 主线关联到到远端的 main 主线，并且更名为同名（注意！此时如果在 branch 上就会出现混乱）。并且将其推送。
 
 ```bash
 git remote add origin https://github.com/你的用户名/garden-backend.git
+# 关联
 git branch -M main
+# 将当前分支更名为 main（旧称 master，现在统一为 main）
 git push -u origin main
+# 推送到远程的主分支
 ```
 
-由于我们
+由于我们目前是 branch:feat-rss 写完了之后才做这些，因此要先暂存，提交当前的进程到 feat 分支。然后切换到主分支，然后推送主分支先。做完这些，再切换到 feat 分支，将 feat 分支提交到远程的 branch，即`git push origin feat/rss-fetch`。并且日后在网页提出 PR。
 
 ### 附: 当错误提交之后的补救措施
 
