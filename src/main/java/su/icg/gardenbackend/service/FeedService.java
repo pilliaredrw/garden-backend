@@ -1,60 +1,78 @@
 package su.icg.gardenbackend.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import su.icg.gardenbackend.model.FeedItem;
+import su.icg.gardenbackend.entity.Feed;
+import su.icg.gardenbackend.mapper.FeedMapper;
 
 import java.net.URL;
-import java.util.ArrayList;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 
-@Slf4j // 引入日志工具，不用再手动写 LoggerFactory...
+@Slf4j
 @Service
-public class FeedService
-{
-    // application.properties 读取配置到 blogRssUrl
+public class FeedService {
+
     @Value("${rss.blog.url}")
-    private String blogRssUrl; // 接受 URL 字面值
+    private String blogRssUrl; // 通过 @Value 注解得到配置文件中 URL 的内容
 
-    public List<FeedItem> fetchRss()
-    {
-        List<FeedItem> items = new ArrayList<>();
+    @Autowired
+    private FeedMapper feedMapper; // 注入 Mapper，用来操作数据库
 
-        try
-        {
-            // 1. 记录日志开始抓数据
-            log.info("开始抓取 RSS: {}", blogRssUrl);
-
-            // 2. 建立连接并解析
-            URL feedUrl = new URL(blogRssUrl); // 创建一个 URL 连接
+    // 动作 1: 触发抓取并入库 (Sync)
+    public void syncBlogRss() {
+        try {
+            log.info("开始同步博客数据...");
+            URL feedUrl = new URL(blogRssUrl);
             SyndFeedInput input = new SyndFeedInput();
-            SyndFeed feed = input.build(new XmlReader(feedUrl)); // XmlReader 处理编码问题 (UTF-8/GBK)
+            SyndFeed feed = input.build(new XmlReader(feedUrl));
+            log.info("解析得到内容:"+feed.toString());
 
-            // 3. 把 Rome 的格式 (SyndEntry) 转换为 Model 格式 (FeedItem)
-            for (SyndEntry entry : feed.getEntries())
-            {
-                FeedItem item = new FeedItem();
-                item.setTitle(entry.getTitle());
-                item.setLink(entry.getLink());
-                // RSS 的时间可能是 PublishedDate 也可能是 UpdatedDate，做个防御
-                item.setDate(entry.getPublishedDate() != null ? entry.getPublishedDate().toString() : "未知时间");
+            for (SyndEntry entry : feed.getEntries()) {
+                // 1. 防重判断：数据库里有没有这条链接？
+                String link = entry.getLink();
+                // LambdaQueryWrapper 是 MP 的神器，相当于写 SQL: SELECT count(*) FROM t_feed WHERE url = 'link'
+                Long count = feedMapper.selectCount(new LambdaQueryWrapper<Feed>().eq(Feed::getUrl, link));
 
-                items.add(item);
+                if (count > 0) {
+                    continue; // 数据库有了，跳过
+                }
+
+                // 2. 组装 Entity 对象
+                Feed feedEntity = new Feed();
+                feedEntity.setTitle(entry.getTitle());
+                feedEntity.setUrl(link);
+                feedEntity.setContent(entry.getDescription() != null ? entry.getDescription().getValue() : "");
+                feedEntity.setSourceType("BLOG");
+
+                // 时间转换 (Date -> LocalDateTime)
+                Date pubDate = entry.getPublishedDate();
+                if (pubDate != null) {
+                    feedEntity.setPublishTime(pubDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+                }
+
+                // 3. 入库
+                feedMapper.insert(feedEntity);
+                log.info("入库新文章: {}", entry.getTitle());
             }
-            log.info("抓取成功，共获取 {} 条数据", items.size());
-
+        } catch (Exception e) {
+            log.error("同步失败", e);
         }
-        catch (Exception e)
-        {
-            log.error("抓取 RSS 失败: {}", e.getMessage(), e);
-            // 这里我们选择返回一个空列表，或者也可以抛出自定义异常给前端
-        }
+    }
 
-        return items;
+    // 动作 2: 给前端查数据 (Query)
+    public List<Feed> getAllFeeds() {
+        // 相当于 SQL: SELECT * FROM t_feed ORDER BY publish_time DESC
+        return feedMapper.selectList(
+                new LambdaQueryWrapper<Feed>().orderByDesc(Feed::getPublishTime)
+        );
     }
 }
