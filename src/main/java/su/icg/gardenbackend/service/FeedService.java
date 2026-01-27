@@ -19,7 +19,8 @@ import java.util.List;
 
 @Slf4j
 @Service
-public class FeedService {
+public class FeedService
+{
 
     @Value("${rss.blog.url}")
     private String blogRssUrl; // 通过 @Value 注解得到配置文件中 URL 的内容
@@ -27,19 +28,31 @@ public class FeedService {
     @Autowired
     private FeedMapper feedMapper; // 注入 Mapper，用来操作数据库
 
-    // 动作 1: 触发抓取并入库 (Sync)
-    public void syncBlogRss() {
+    private SyndFeed getRssByUrl(String url)
+    {
         try {
-            log.info("开始同步博客数据...");
+            log.info("[INFO]开始抓取RSS");
             URL feedUrl = new URL(blogRssUrl);
-            SyndFeedInput input = new SyndFeedInput();
-            SyndFeed feed = input.build(new XmlReader(feedUrl));
-            log.info("解析得到内容:"+feed.toString());
+            SyndFeed feed = (new SyndFeedInput()).build(new XmlReader((feedUrl)));
+            log.info("解析得到内容:" + feed.toString());
+            return feed;
+        } catch (Exception e) {
+            log.info(("抓取失败"));
+            return null;
+        }
+    }
 
-            for (SyndEntry entry : feed.getEntries()) {
+    // 动作 1: 触发抓取并入库 (Sync)
+    public SyndFeed syncBlogRss()
+    {
+        try {
+            // 拿到RSS内容
+            SyndFeed RssFeed = getRssByUrl(blogRssUrl);
+
+            for (SyndEntry entry : RssFeed.getEntries()) {
                 // 1. 防重判断：数据库里有没有这条链接？
                 String link = entry.getLink();
-                // LambdaQueryWrapper 是 MP 的神器，相当于写 SQL: SELECT count(*) FROM t_feed WHERE url = 'link'
+                // LambdaQueryWrapper 是 MP 功能相当于 SELECT count(*) FROM t_feed WHERE url = 'link'
                 Long count = feedMapper.selectCount(new LambdaQueryWrapper<Feed>().eq(Feed::getUrl, link));
 
                 if (count > 0) {
@@ -63,13 +76,16 @@ public class FeedService {
                 feedMapper.insert(feedEntity);
                 log.info("入库新文章: {}", entry.getTitle());
             }
+            return RssFeed;
         } catch (Exception e) {
             log.error("同步失败", e);
+            return null;
         }
     }
 
     // 动作 2: 给前端查数据 (Query)
-    public List<Feed> getAllFeeds() {
+    public List<Feed> getAllFeeds()
+    {
         // 相当于 SQL: SELECT * FROM t_feed ORDER BY publish_time DESC
         return feedMapper.selectList(
                 new LambdaQueryWrapper<Feed>().orderByDesc(Feed::getPublishTime)
