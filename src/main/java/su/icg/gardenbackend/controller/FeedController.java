@@ -1,8 +1,8 @@
 package su.icg.gardenbackend.controller;
 
+import com.rometools.rome.feed.synd.SyndFeed;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import su.icg.gardenbackend.entity.Feed;
 import su.icg.gardenbackend.service.FeedService;
@@ -21,10 +21,9 @@ public class FeedController {
     }
 
     // 手动触发同步接口 (抓取)
-    // 浏览器访问 http://localhost:8080/api/sync 就会触发一次抓取
     @GetMapping("/api/sync")
     public String triggerSync() {
-        feedService.syncBlogRss();
-        return "同步指令已发送，请查看控制台日志";
+        SyndFeed feed = feedService.syncBlogRss();
+        return "测试RSS接收连通性" + feed.toString();
     }
 }
